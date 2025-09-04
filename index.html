@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShoppingApp</title>
+    <title>blue cart shopping</title>
     
     <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -98,7 +98,7 @@
         .btn-secondary { background-color: var(--secondary-color); }
         .btn-secondary:hover { background-color: #5a6268; }
         
-        input[type="text"], input[type="email"], input[type="password"], textarea, select {
+        input[type="text"], input[type="email"], input[type="password"], textarea, select, input[type="tel"] {
             width: 100%;
             padding: 10px;
             margin: 8px 0;
@@ -212,23 +212,43 @@
             display: flex;
             overflow-x: auto;
             padding: 10px;
-            gap: 10px;
+            gap: 15px; /* Increased gap */
             -ms-overflow-style: none;  /* IE and Edge */
             scrollbar-width: none;  /* Firefox */
         }
         .categories::-webkit-scrollbar { display: none; }
+
+        /* <<<< മാറ്റം: Category Bubble Style >>>> */
         .category-bubble {
-            padding: 8px 15px;
-            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
             cursor: pointer;
-            white-space: nowrap;
-            color: white;
-            font-weight: 500;
+            width: 80px; /* Fixed width for uniform look */
+            flex-shrink: 0; /* Prevent bubbles from shrinking */
         }
-        .category-bubble.active {
-            border: 2px solid var(--dark-color);
+        .category-bubble img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #eee;
+            transition: border-color 0.3s;
+        }
+        .category-bubble span {
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .category-bubble.active img {
+            border-color: var(--primary-color);
             transform: scale(1.05);
         }
+        .category-bubble.active span {
+            color: var(--primary-color);
+        }
+        /* <<<< മാറ്റം അവസാനിച്ചു >>>> */
 
         .product-grid {
             display: grid;
@@ -414,7 +434,7 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="logo">ShoppingApp</div>
+        <div class="logo">blue cart shopping</div>
         <div class="header-icons">
             <i class="fas fa-search search-icon" data-hash="search"></i>
             <div id="login-status-indicator"></div>
@@ -600,11 +620,16 @@
         <div class="modal-content">
              <span class="close-btn">&times;</span>
             <h2>Shipping Details</h2>
+            <!-- <<<< മാറ്റം: Shipping Form >>>> -->
             <form id="shipping-form">
                 <input type="text" id="shipping-name" placeholder="Full Name" required>
-                <textarea id="shipping-address" placeholder="Full Shipping Address" rows="4" required></textarea>
+                <textarea id="shipping-address" placeholder="House Name, Street, Landmark" rows="3" required></textarea>
+                <input type="tel" id="shipping-phone" placeholder="Phone Number" pattern="[0-9]{10}" title="Please enter a valid 10-digit phone number" required>
+                <input type="text" id="shipping-pincode" placeholder="Pincode" pattern="[0-9]{6}" title="Please enter a valid 6-digit pincode" required>
+                <input type="text" id="shipping-state" placeholder="State" required>
                 <button type="submit">Place Order</button>
             </form>
+            <!-- <<<< മാറ്റം അവസാനിച്ചു >>>> -->
         </div>
     </div>
 
@@ -815,25 +840,50 @@
                 document.querySelector('.slider-nav').style.display = 'none';
             }
         };
-
+        
+        // <<<< മാറ്റം: renderCategories function >>>>
         const renderCategories = (products) => {
             const categoriesContainer = document.querySelector('.categories');
-            const categories = ['All', ...new Set(products.map(p => p.category))];
-            const colors = ['#007bff', '#6f42c1', '#28a745', '#dc3545', '#fd7e14', '#20c997', '#ffc107'];
-            categoriesContainer.innerHTML = categories.map((cat, index) => 
-                `<div class="category-bubble" data-category="${cat}" style="background-color:${colors[index % colors.length]}">${cat}</div>`
-            ).join('');
-            
-            categoriesContainer.querySelector('.category-bubble').classList.add('active'); 
-            
+
+            // Create a map of category names to their first found image
+            const categoryInfo = products.reduce((acc, product) => {
+                if (product.category && !acc[product.category]) {
+                    acc[product.category] = getProductImage(product);
+                }
+                return acc;
+            }, {});
+
+            // Build the final list for rendering, adding 'All' with a generic icon
+            const categoriesToRender = [
+                { name: 'All', image: 'https://img.icons8.com/ios-filled/100/CCCCCC/check-all.png' },
+                ...Object.entries(categoryInfo).map(([name, image]) => ({ name, image }))
+            ];
+
+            // Generate the new HTML with images and text
+            categoriesContainer.innerHTML = categoriesToRender.map(cat => `
+                <div class="category-bubble" data-category="${cat.name}">
+                    <img src="${cat.image}" alt="${cat.name}">
+                    <span>${cat.name}</span>
+                </div>
+            `).join('');
+
+            // Set the first bubble ('All') as active by default
+            const firstBubble = categoriesContainer.querySelector('.category-bubble');
+            if (firstBubble) {
+                firstBubble.classList.add('active');
+            }
+
+            // Add event listener to the container for robust click handling
             categoriesContainer.addEventListener('click', e => {
-                if (e.target.classList.contains('category-bubble')) {
+                const bubble = e.target.closest('.category-bubble');
+                if (bubble) {
                     document.querySelectorAll('.category-bubble').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    filterProducts(e.target.dataset.category);
+                    bubble.classList.add('active');
+                    filterProducts(bubble.dataset.category);
                 }
             });
         };
+        // <<<< മാറ്റം അവസാനിച്ചു >>>>
 
         const renderProducts = (products, containerId) => {
             const grid = document.getElementById(containerId);
@@ -1258,6 +1308,7 @@
             }
         });
         
+        // <<<< മാറ്റം: Shipping Form Submit Event >>>>
         document.getElementById('shipping-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentUser) return;
@@ -1272,6 +1323,9 @@
             
                 const shippingName = document.getElementById('shipping-name').value;
                 const shippingAddress = document.getElementById('shipping-address').value;
+                const shippingPhone = document.getElementById('shipping-phone').value;
+                const shippingPincode = document.getElementById('shipping-pincode').value;
+                const shippingState = document.getElementById('shipping-state').value;
                 
                 let totalAmount = 0;
                 const items = [];
@@ -1306,7 +1360,10 @@
                     totalAmount: totalAmount,
                     status: 'Pending',
                     shippingName,
-                    shippingAddress
+                    shippingAddress,
+                    shippingPhone,
+                    shippingPincode,
+                    shippingState
                 });
                 
                 await remove(userCartRef);
@@ -1319,6 +1376,7 @@
                 alert("Failed to place order.");
             }
         });
+        // <<<< മാറ്റം അവസാനിച്ചു >>>>
 
     </script>
 </body>
